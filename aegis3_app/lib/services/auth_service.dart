@@ -3,6 +3,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/api_constants.dart';
 
 class AuthService {
+  Future<void> logout() async {
+    await _storage.delete(key: 'auth_token');
+  }
+
   Future<String?> loginPlayer({
     required String email,
     required String password,

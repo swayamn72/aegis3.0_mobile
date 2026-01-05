@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../scaffold.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 
@@ -392,12 +393,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 });
 
                 if (error == null) {
-                  // Login successful, navigate to sample screen
+                  // Login successful, navigate to main scaffold
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Login successful!')),
                     );
-                    Navigator.pushReplacementNamed(context, '/sample');
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AegisMainScaffold(),
+                      ),
+                    );
                   }
                 } else {
                   // Show error

@@ -4,6 +4,7 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/sample_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'scaffold.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -238,7 +239,8 @@ class SplashDecider extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         } else if (snapshot.hasData && snapshot.data == true) {
-          return const SampleScreen();
+          // Show the main navigation scaffold after login
+          return const AegisMainScaffold();
         } else {
           return const LoginScreen();
         }
