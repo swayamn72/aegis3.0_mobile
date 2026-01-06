@@ -28,6 +28,7 @@ class PlayerService {
 
       if (response.statusCode == 200) {
         logger.d('Profile fetched successfully');
+        logger.d('Profile picture URL: ${response.data['profilePicture']}');
         return UserProfile.fromJson(response.data);
       } else {
         throw Exception(response.data['message'] ?? 'Failed to fetch profile');

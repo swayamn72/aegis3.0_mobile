@@ -4,6 +4,7 @@ import 'screens/login_screen.dart';
 import 'providers/user_profile_provider.dart';
 import 'providers/core_providers.dart';
 import 'services/auth_service.dart';
+import 'widgets/profile_avatar.dart';
 
 // Main Navigation Scaffold
 class AegisMainScaffold extends ConsumerStatefulWidget {
@@ -224,30 +225,22 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
       child: SafeArea(
         child: Column(
           children: [
-            Container(
+            Padding(
               padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF06b6d4), Color(0xFF7c3aed)],
-                ),
-              ),
               child: Column(
                 children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white, width: 2),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF06b6d4), Color(0xFF7c3aed)],
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 35,
-                      color: Colors.white,
-                    ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final profileState = ref.watch(userProfileProvider);
+                      final profile = profileState.profile;
+
+                      return ProfileAvatar(
+                        imageUrl: profile?.profilePicture,
+                        fallbackText: profile?.inGameName ?? profile?.username,
+                        size: 70,
+                        borderWidth: 2,
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   Consumer(
