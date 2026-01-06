@@ -1,27 +1,43 @@
 import 'package:flutter/material.dart';
-import 'services/auth_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/login_screen.dart';
+import 'providers/user_profile_provider.dart';
+import 'providers/core_providers.dart';
+import 'services/auth_service.dart';
 
 // Main Navigation Scaffold
-class AegisMainScaffold extends StatefulWidget {
+class AegisMainScaffold extends ConsumerStatefulWidget {
   const AegisMainScaffold({super.key});
 
   @override
-  State<AegisMainScaffold> createState() => _AegisMainScaffoldState();
+  ConsumerState<AegisMainScaffold> createState() => _AegisMainScaffoldState();
 }
 
-class _AegisMainScaffoldState extends State<AegisMainScaffold> {
+class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final List<Widget> _screens;
 
-  // TODO: Replace these with your actual screen widgets
-  final List<Widget> _screens = [
-    const PlaceholderScreen(title: 'Feed'),
-    const PlaceholderScreen(title: 'Tournaments'),
-    const PlaceholderScreen(title: 'TeamUp'),
-    const PlaceholderScreen(title: 'Messages'),
-    const PlaceholderScreen(title: 'Profile'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize screens once to prevent memory leaks
+    _screens = [
+      const PlaceholderScreen(title: 'Feed'),
+      const PlaceholderScreen(title: 'Tournaments'),
+      const PlaceholderScreen(title: 'TeamUp'),
+      const PlaceholderScreen(title: 'Messages'),
+      const PlaceholderScreen(title: 'Profile'),
+    ];
+
+    // Load cached profile when scaffold opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final logger = ref.read(loggerProvider);
+      logger.d('Loading profile in post frame callback...');
+      ref.read(userProfileProvider.notifier).loadProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,13 +250,34 @@ class _AegisMainScaffoldState extends State<AegisMainScaffold> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Username',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final profileState = ref.watch(userProfileProvider);
+                      final profile = profileState.profile;
+
+                      return Column(
+                        children: [
+                          Text(
+                            profile?.inGameName ??
+                                profile?.username ??
+                                'Player',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (profile?.realName != null)
+                            Text(
+                              profile!.realName!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 4),
                   Container(
@@ -402,8 +439,10 @@ class _AegisMainScaffoldState extends State<AegisMainScaffold> {
                         ),
                       );
                       if (shouldLogout == true) {
-                        final authService = AuthService();
+                        final authService = ref.read(authServiceProvider);
                         await authService.logout();
+                        // Clear profile state
+                        ref.read(userProfileProvider.notifier).clearProfile();
                         if (context.mounted) {
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(

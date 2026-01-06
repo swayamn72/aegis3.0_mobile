@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/sample_screen.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'scaffold.dart';
+import 'hive_setup.dart';
+import 'providers/core_providers.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await setupHive();
 
   // Set preferred orientations
   SystemChrome.setPreferredOrientations([
@@ -25,7 +30,7 @@ void main() {
     ),
   );
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -220,19 +225,25 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class SplashDecider extends StatelessWidget {
+class SplashDecider extends ConsumerWidget {
   const SplashDecider({Key? key}) : super(key: key);
 
-  Future<bool> _isLoggedIn() async {
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'auth_token');
-    return token != null && token.isNotEmpty;
+  Future<bool> _isLoggedIn(WidgetRef ref) async {
+    try {
+      final storage = ref.read(secureStorageProvider);
+      final token = await storage.read(key: 'auth_token');
+      return token != null && token.isNotEmpty;
+    } catch (e) {
+      final logger = ref.read(loggerProvider);
+      logger.e('Error checking login status: $e');
+      return false;
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return FutureBuilder<bool>(
-      future: _isLoggedIn(),
+      future: _isLoggedIn(ref),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

@@ -1,10 +1,39 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../constants/api_constants.dart';
+import 'package:logger/logger.dart';
+import '../providers/core_providers.dart';
 
+// ============================================================================
+// Auth Service Provider
+// ============================================================================
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(
+    ref.read(dioProvider),
+    ref.read(secureStorageProvider),
+    ref.read(loggerProvider),
+  );
+});
+
+// ============================================================================
+// Auth Service
+// ============================================================================
 class AuthService {
+  final Dio _dio;
+  final FlutterSecureStorage _storage;
+  final Logger logger;
+
+  AuthService(this._dio, this._storage, this.logger);
+
   Future<void> logout() async {
-    await _storage.delete(key: 'auth_token');
+    try {
+      logger.d('Logging out user...');
+      await _storage.delete(key: 'auth_token');
+      logger.d('User logged out successfully');
+    } catch (e) {
+      logger.e('Error during logout: $e');
+      rethrow;
+    }
   }
 
   Future<String?> loginPlayer({
@@ -12,6 +41,8 @@ class AuthService {
     required String password,
   }) async {
     try {
+      logger.d('Attempting login for: $email');
+
       final response = await _dio.post(
         '/auth/login',
         data: {'email': email, 'password': password},
@@ -20,19 +51,22 @@ class AuthService {
       if (response.statusCode == 200) {
         final token = response.data['token'];
         await _storage.write(key: 'auth_token', value: token);
+        logger.d('Login successful');
         return null; // Success
       } else {
-        return response.data['message'] ?? 'Login failed';
+        final errorMsg = response.data['message'] ?? 'Login failed';
+        logger.w('Login failed: $errorMsg');
+        return errorMsg;
       }
     } on DioException catch (e) {
-      return e.response?.data['message'] ?? 'Network error';
+      final errorMsg = e.response?.data['message'] ?? 'Network error';
+      logger.e('Login error: $errorMsg');
+      return errorMsg;
     } catch (e) {
+      logger.e('Unexpected login error: $e');
       return 'Unexpected error';
     }
   }
-
-  final Dio _dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   Future<String?> signupPlayer({
     required String username,
@@ -40,6 +74,8 @@ class AuthService {
     required String password,
   }) async {
     try {
+      logger.d('Attempting signup for: $email');
+
       final response = await _dio.post(
         '/auth/signup',
         data: {'username': username, 'email': email, 'password': password},
@@ -48,13 +84,19 @@ class AuthService {
       if (response.statusCode == 201) {
         final token = response.data['token'];
         await _storage.write(key: 'auth_token', value: token);
+        logger.d('Signup successful');
         return null; // Success
       } else {
-        return response.data['message'] ?? 'Signup failed';
+        final errorMsg = response.data['message'] ?? 'Signup failed';
+        logger.w('Signup failed: $errorMsg');
+        return errorMsg;
       }
     } on DioException catch (e) {
-      return e.response?.data['message'] ?? 'Network error';
+      final errorMsg = e.response?.data['message'] ?? 'Network error';
+      logger.e('Signup error: $errorMsg');
+      return errorMsg;
     } catch (e) {
+      logger.e('Unexpected signup error: $e');
       return 'Unexpected error';
     }
   }

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../scaffold.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../providers/user_profile_provider.dart';
+import '../providers/core_providers.dart';
 import '../services/auth_service.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -382,7 +385,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   _isLoading = true;
                 });
 
-                final authService = AuthService();
+                final authService = ref.read(authServiceProvider);
+                final logger = ref.read(loggerProvider);
+
                 final error = await authService.loginPlayer(
                   email: _emailController.text.trim(),
                   password: _passwordController.text,
@@ -393,7 +398,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 });
 
                 if (error == null) {
-                  // Login successful, navigate to main scaffold
+                  // Fetch and cache user profile after login
+                  try {
+                    logger.d('Fetching user profile...');
+                    await ref
+                        .read(userProfileProvider.notifier)
+                        .fetchAndCacheProfile();
+                    logger.d('Profile fetched and cached successfully');
+                  } catch (e) {
+                    logger.w('Profile fetch error (non-blocking): $e');
+                  }
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Login successful!')),
@@ -418,33 +432,12 @@ class _LoginScreenState extends State<LoginScreen> {
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 18),
         backgroundColor: const Color(0xFF3B82F6),
-        disabledBackgroundColor: Colors.grey,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
       ),
       child: _isLoading
-          ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-          : const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Sign In',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward, color: Colors.white),
-              ],
+          ? const CircularProgressIndicator(color: Colors.white)
+          : const Text(
+              'Sign In',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
     );
   }
