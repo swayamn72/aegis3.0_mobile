@@ -6,6 +6,7 @@ import 'providers/core_providers.dart';
 import 'services/auth_service.dart';
 import 'widgets/profile_avatar.dart';
 import 'screens/myprofile_screen';
+import 'screens/settings_screen.dart';
 
 // Main Navigation Scaffold
 class AegisMainScaffold extends ConsumerStatefulWidget {
@@ -371,7 +372,11 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
                     title: 'Settings',
                     color: Colors.grey,
                     onTap: () {
-                      // TODO: Implement settings navigation
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildDrawerItem(

@@ -59,6 +59,12 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     try {
+      // Handle statistics object if present (extract tournamentsPlayed and matchesPlayed)
+      final stats = json['statistics'] as Map<String, dynamic>?;
+      final tournamentsPlayed =
+          stats?['tournamentsPlayed'] ?? json['tournamentsPlayed'];
+      final matchesPlayed = stats?['matchesPlayed'] ?? json['matchesPlayed'];
+
       return UserProfile(
         id: json['_id'] as String,
         username: json['username'] as String,
@@ -91,21 +97,30 @@ class UserProfile {
         verified: json['verified'] as bool?,
         createdAt: json['createdAt'] as String?,
         previousTeams: _parsePreviousTeams(json['previousTeams']),
-        team: json['team'] != null ? Team.fromJson(json['team']) : null,
-        tournamentsPlayed: json['tournamentsPlayed'] != null
-            ? (json['tournamentsPlayed'] is int
-                  ? json['tournamentsPlayed']
-                  : int.tryParse(json['tournamentsPlayed'].toString()))
+        team: json['team'] != null && json['team'] is Map
+            ? Team.fromJson(
+                json['team'] is Map<String, dynamic>
+                    ? json['team']
+                    : Map<String, dynamic>.from(json['team']),
+              )
             : null,
-        matchesPlayed: json['matchesPlayed'] != null
-            ? (json['matchesPlayed'] is int
-                  ? json['matchesPlayed']
-                  : int.tryParse(json['matchesPlayed'].toString()))
+        tournamentsPlayed: tournamentsPlayed != null
+            ? (tournamentsPlayed is int
+                  ? tournamentsPlayed
+                  : int.tryParse(tournamentsPlayed.toString()))
+            : null,
+        matchesPlayed: matchesPlayed != null
+            ? (matchesPlayed is int
+                  ? matchesPlayed
+                  : int.tryParse(matchesPlayed.toString()))
             : null,
         primaryGame: json['primaryGame'] as String?,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       // In production, use a proper logging system
+      print('Error parsing UserProfile: $e');
+      print('Stack trace: $stackTrace');
+      print('JSON data: $json');
       rethrow;
     }
   }
