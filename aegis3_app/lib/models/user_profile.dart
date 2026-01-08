@@ -23,6 +23,9 @@ class UserProfile {
   final String? createdAt;
   final List<PreviousTeam>? previousTeams;
   final Team? team;
+  final int? tournamentsPlayed;
+  final int? matchesPlayed;
+  final String? primaryGame;
 
   UserProfile({
     required this.id,
@@ -49,6 +52,9 @@ class UserProfile {
     this.createdAt,
     this.previousTeams,
     this.team,
+    this.tournamentsPlayed,
+    this.matchesPlayed,
+    this.primaryGame,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -86,6 +92,17 @@ class UserProfile {
         createdAt: json['createdAt'] as String?,
         previousTeams: _parsePreviousTeams(json['previousTeams']),
         team: json['team'] != null ? Team.fromJson(json['team']) : null,
+        tournamentsPlayed: json['tournamentsPlayed'] != null
+            ? (json['tournamentsPlayed'] is int
+                  ? json['tournamentsPlayed']
+                  : int.tryParse(json['tournamentsPlayed'].toString()))
+            : null,
+        matchesPlayed: json['matchesPlayed'] != null
+            ? (json['matchesPlayed'] is int
+                  ? json['matchesPlayed']
+                  : int.tryParse(json['matchesPlayed'].toString()))
+            : null,
+        primaryGame: json['primaryGame'] as String?,
       );
     } catch (e) {
       // In production, use a proper logging system
@@ -264,6 +281,9 @@ extension UserProfileToJson on UserProfile {
       'createdAt': createdAt,
       'previousTeams': previousTeams?.map((e) => e.toJson()).toList(),
       'team': team?.toJson(),
+      'tournamentsPlayed': tournamentsPlayed,
+      'matchesPlayed': matchesPlayed,
+      'primaryGame': primaryGame,
     };
   }
 }

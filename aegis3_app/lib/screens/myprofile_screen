@@ -1,0 +1,801 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/user_profile_provider.dart';
+import '../models/user_profile.dart';
+
+class AegisMyProfileScreen extends ConsumerStatefulWidget {
+  const AegisMyProfileScreen({super.key});
+
+  @override
+  ConsumerState<AegisMyProfileScreen> createState() => _AegisMyProfileScreenState();
+}
+
+class _AegisMyProfileScreenState extends ConsumerState<AegisMyProfileScreen> {
+  String _activeTab = 'overview';
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = ref.watch(userProfileProvider).profile;
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF06b6d4)),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildProfileHeader(profile),
+          const SizedBox(height: 16),
+          _buildStatsOverview(profile),
+          const SizedBox(height: 16),
+          _buildTabs(),
+          const SizedBox(height: 16),
+          _buildTabContent(profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(UserProfile? profile) {
+    final inGameRole = profile?.inGameRole ?? [];
+    final languages = profile?.languages ?? [];
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181b),
+        border: Border.all(color: const Color(0xFF27272a)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Profile Picture and Basic Info
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                    // Profile Picture with Verified Badge
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          margin: const EdgeInsets.only(top: 0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF18181b),
+                              width: 4,
+                            ),
+                            gradient: profile?.profilePicture == null
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFF06b6d4),
+                                      Color(0xFF7c3aed),
+                                    ],
+                                  )
+                                : null,
+                          ),
+                          child: profile?.profilePicture != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _buildProfileImage(profile!.profilePicture!),
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  size: 48,
+                                  color: Colors.white,
+                                ),
+                        ),
+                        if (profile?.verified == true)
+                          Positioned(
+                            bottom: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF06b6d4),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF18181b),
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // Name and Username
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile?.username ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            profile?.realName ?? '',
+                            style: const TextStyle(
+                              color: Color(0xFF71717a),
+                              fontSize: 14,
+                            ),
+                          ),
+                          if ((profile?.inGameName ?? '').isNotEmpty && profile?.inGameName != 'Not set')
+                            Text(
+                              '@${profile!.inGameName}',
+                              style: const TextStyle(
+                                color: Color(0xFF06b6d4),
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+            const SizedBox(height: 16),
+
+            // Action Buttons
+            Row(
+              children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // TODO: Navigate to settings/edit profile
+                        },
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Edit Profile'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF06b6d4),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {
+                        // TODO: Implement share profile
+                      },
+                      icon: const Icon(Icons.share),
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF27272a),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        // TODO: Implement settings
+                      },
+                      icon: const Icon(Icons.settings),
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF27272a),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ],
+                ),
+
+            const SizedBox(height: 16),
+
+            // Quick Info
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                _buildQuickInfo(
+                  Icons.location_on,
+                  '${profile?.location ?? ''}, ${profile?.country ?? ''}',
+                ),
+                _buildQuickInfo(
+                  Icons.calendar_today,
+                  '${profile?.age ?? ''} years',
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Bio
+            Text(
+              profile?.bio ?? '',
+              style: const TextStyle(
+                color: Color(0xFFd4d4d8),
+                fontSize: 14,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Tags
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if ((profile?.primaryGame ?? '') != 'Not selected')
+                  _buildTag(
+                    profile!.primaryGame!,
+                    const Color(0xFF06b6d4),
+                  ),
+                if ((profile?.teamStatus ?? '') != 'Not specified')
+                  _buildTag(
+                    profile!.teamStatus!,
+                    _getTeamStatusColor(profile!.teamStatus!),
+                  ),
+                ...inGameRole.map(
+                  (role) => _buildTag(role, const Color(0xFF7c3aed)),
+                ),
+                ...languages.map(
+                  (lang) => _buildTag(lang, const Color(0xFF52525b)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileImage(String imageUrl) {
+    // Check if the image is a base64 data URI
+    if (imageUrl.startsWith('data:')) {
+      try {
+        // Extract the base64 data after the comma
+        final base64Data = imageUrl.split(',')[1];
+        final bytes = base64Decode(base64Data);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        // If decoding fails, show error icon
+        return const Icon(
+          Icons.error,
+          size: 48,
+          color: Colors.red,
+        );
+      }
+    } else {
+      // Regular URL - use network image
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+      );
+    }
+  }
+
+  Widget _buildQuickInfo(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF71717a)),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFF71717a),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color.withOpacity(0.9),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Color _getTeamStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'looking for a team':
+        return const Color(0xFF22c55e);
+      case 'in a team':
+        return const Color(0xFF3b82f6);
+      case 'open for offers':
+        return const Color(0xFFeab308);
+      default:
+        return const Color(0xFF71717a);
+    }
+  }
+
+  Widget _buildStatsOverview(UserProfile? profile) {
+    final tournamentsPlayed = profile?.tournamentsPlayed ?? 0;
+    final matchesPlayed = profile?.matchesPlayed ?? 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              Icons.emoji_events,
+              'Tournaments',
+              tournamentsPlayed.toString(),
+              const Color(0xFFf59e0b),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              Icons.sports_esports,
+              'Matches',
+              matchesPlayed.toString(),
+              const Color(0xFF06b6d4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(IconData icon, String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181b),
+        border: Border.all(color: const Color(0xFF27272a)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF71717a),
+              fontSize: 10,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabs() {
+    final tabs = ['Overview', 'Social', 'Team'];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181b),
+        border: Border.all(color: const Color(0xFF27272a)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: tabs.map((tab) {
+          final isActive = _activeTab.toLowerCase() == tab.toLowerCase();
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _activeTab = tab.toLowerCase());
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFF06b6d4) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  tab,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isActive ? Colors.white : const Color(0xFF71717a),
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTabContent(UserProfile? profile) {
+    switch (_activeTab) {
+      case 'overview':
+        return _buildOverviewTab(profile);
+      case 'social':
+        return _buildSocialTab(profile);
+      case 'team':
+        return _buildTeamTab(profile);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildOverviewTab(UserProfile? profile) {
+    final matchesPlayed = profile?.matchesPlayed ?? 0;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF18181b),
+              border: Border.all(color: const Color(0xFF27272a)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.bar_chart, color: Color(0xFF06b6d4), size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Performance',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPerformanceStat(
+                        'Matches Played',
+                        matchesPlayed.toString(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF18181b),
+              border: Border.all(color: const Color(0xFF27272a)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.history, color: Color(0xFF06b6d4), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Recent Matches',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.sports_esports,
+                        size: 48,
+                        color: Color(0xFF52525b),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'No matches played yet',
+                        style: TextStyle(color: Color(0xFF71717a)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPerformanceStat(String label, String value, {Color? color}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF27272a).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF71717a),
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color ?? Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSocialTab(UserProfile? profile) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF18181b),
+          border: Border.all(color: const Color(0xFF27272a)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Social Links',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildSocialLink(
+              'Discord',
+              profile?.discordTag ?? '',
+              Icons.tag,
+              const Color(0xFF5865F2),
+            ),
+            const SizedBox(height: 12),
+            _buildSocialLink(
+              'Twitch',
+              profile?.twitch ?? '',
+              Icons.live_tv,
+              const Color(0xFF9146FF),
+            ),
+            const SizedBox(height: 12),
+            _buildSocialLink(
+              'YouTube',
+              profile?.youtube ?? '',
+              Icons.play_circle,
+              const Color(0xFFFF0000),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialLink(String platform, String value, IconData icon, Color color) {
+    final hasValue = value.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: hasValue ? color.withOpacity(0.1) : const Color(0xFF27272a).withOpacity(0.5),
+        border: Border.all(
+          color: hasValue ? color.withOpacity(0.3) : const Color(0xFF52525b),
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  platform,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  hasValue ? value : 'Not connected',
+                  style: TextStyle(
+                    color: hasValue ? color : const Color(0xFF71717a),
+                    fontSize: 12,
+                    fontStyle: hasValue ? FontStyle.normal : FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (hasValue)
+            const Icon(
+              Icons.open_in_new,
+              color: Color(0xFF71717a),
+              size: 16,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamTab(UserProfile? profile) {
+    final team = profile?.team;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF18181b),
+          border: Border.all(color: const Color(0xFF27272a)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.shield, color: Color(0xFF06b6d4), size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Team',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (team != null) ...[
+              // Team Logo
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF27272a)),
+                  gradient: team.logo == null
+                      ? const LinearGradient(
+                          colors: [Color(0xFF06b6d4), Color(0xFF7c3aed)],
+                        )
+                      : null,
+                ),
+                child: team.logo != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          team.logo!,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          team.teamName[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                team.teamName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ] else ...[
+              const Icon(
+                Icons.groups,
+                size: 64,
+                color: Color(0xFF52525b),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Not in a team',
+                style: TextStyle(color: Color(0xFF71717a)),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  // TODO: Navigate to find team
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF06b6d4),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Find a Team'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

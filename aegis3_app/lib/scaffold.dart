@@ -5,6 +5,7 @@ import 'providers/user_profile_provider.dart';
 import 'providers/core_providers.dart';
 import 'services/auth_service.dart';
 import 'widgets/profile_avatar.dart';
+import 'screens/myprofile_screen';
 
 // Main Navigation Scaffold
 class AegisMainScaffold extends ConsumerStatefulWidget {
@@ -29,7 +30,7 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
       const PlaceholderScreen(title: 'Tournaments'),
       const PlaceholderScreen(title: 'TeamUp'),
       const PlaceholderScreen(title: 'Messages'),
-      const PlaceholderScreen(title: 'Profile'),
+      const AegisMyProfileScreen(),
     ];
 
     // Load cached profile when scaffold opens
