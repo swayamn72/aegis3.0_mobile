@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
+import 'dart:io';
 import '../constants/api_constants.dart';
 
 /// Reusable profile avatar widget with caching and fallback
@@ -41,6 +42,13 @@ class ProfileAvatar extends StatelessWidget {
   Widget _buildContent() {
     // If we have a valid image URL, try to load it
     if (imageUrl != null && imageUrl!.isNotEmpty) {
+      // Check if it's a local file path (cached image)
+      if (imageUrl!.startsWith('/') ||
+          imageUrl!.startsWith('C:') ||
+          imageUrl!.contains('profile_images')) {
+        return _buildFileImage(imageUrl!);
+      }
+
       // Check if it's a base64 data URI
       if (imageUrl!.startsWith('data:image/')) {
         return _buildBase64Image(imageUrl!);
@@ -57,6 +65,9 @@ class ProfileAvatar extends StatelessWidget {
         imageUrl: fullImageUrl,
         fit: BoxFit.cover,
         memCacheWidth: (size * 2).toInt(), // 2x for retina displays
+        memCacheHeight: (size * 2).toInt(),
+        maxHeightDiskCache: (size * 3).toInt(),
+        maxWidthDiskCache: (size * 3).toInt(),
         placeholder: (context, url) => _buildLoadingPlaceholder(),
         errorWidget: (context, url, error) {
           if (kDebugMode) {
@@ -69,6 +80,41 @@ class ProfileAvatar extends StatelessWidget {
 
     // No image URL, show fallback
     return _buildFallback();
+  }
+
+  /// Build image from local file path
+  Widget _buildFileImage(String filePath) {
+    try {
+      if (kDebugMode) {
+        print('ProfileAvatar: Loading file image from: $filePath');
+      }
+
+      final file = File(filePath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          cacheWidth: (size * 2).toInt(),
+          cacheHeight: (size * 2).toInt(),
+          errorBuilder: (context, error, stackTrace) {
+            if (kDebugMode) {
+              print('ProfileAvatar: Failed to load file image: $error');
+            }
+            return _buildFallback();
+          },
+        );
+      } else {
+        if (kDebugMode) {
+          print('ProfileAvatar: File does not exist: $filePath');
+        }
+        return _buildFallback();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('ProfileAvatar: Error loading file image: $e');
+      }
+      return _buildFallback();
+    }
   }
 
   /// Build image from base64 data URI

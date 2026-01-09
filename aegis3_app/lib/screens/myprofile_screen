@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/user_profile_provider.dart';
 import '../models/user_profile.dart';
 
@@ -260,6 +262,27 @@ class _AegisMyProfileScreenState extends ConsumerState<AegisMyProfileScreen> {
   }
 
   Widget _buildProfileImage(String imageUrl) {
+    // Check if it's a local file path (cached image)
+    if (imageUrl.startsWith('/') || 
+        imageUrl.startsWith('C:') || 
+        imageUrl.contains('profile_images')) {
+      try {
+        final file = File(imageUrl);
+        if (file.existsSync()) {
+          return Image.file(
+            file,
+            fit: BoxFit.cover,
+          );
+        }
+      } catch (e) {
+        return const Icon(
+          Icons.error,
+          size: 48,
+          color: Colors.red,
+        );
+      }
+    }
+    
     // Check if the image is a base64 data URI
     if (imageUrl.startsWith('data:')) {
       try {
@@ -279,10 +302,16 @@ class _AegisMyProfileScreenState extends ConsumerState<AegisMyProfileScreen> {
         );
       }
     } else {
-      // Regular URL - use network image
-      return Image.network(
-        imageUrl,
+      // Regular URL - use cached network image
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
         fit: BoxFit.cover,
+        placeholder: (context, url) => const CircularProgressIndicator(),
+        errorWidget: (context, url, error) => const Icon(
+          Icons.error,
+          size: 48,
+          color: Colors.red,
+        ),
       );
     }
   }

@@ -4,6 +4,7 @@ import 'screens/login_screen.dart';
 import 'providers/user_profile_provider.dart';
 import 'providers/core_providers.dart';
 import 'services/auth_service.dart';
+import 'services/performance_service.dart';
 import 'widgets/profile_avatar.dart';
 import 'screens/myprofile_screen';
 import 'screens/settings_screen.dart';
@@ -16,23 +17,17 @@ class AegisMainScaffold extends ConsumerStatefulWidget {
   ConsumerState<AegisMainScaffold> createState() => _AegisMainScaffoldState();
 }
 
-class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
+class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold>
+    with AutomaticKeepAliveClientMixin {
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late final List<Widget> _screens;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize screens once to prevent memory leaks
-    _screens = [
-      const PlaceholderScreen(title: 'Feed'),
-      const PlaceholderScreen(title: 'Tournaments'),
-      const PlaceholderScreen(title: 'TeamUp'),
-      const PlaceholderScreen(title: 'Messages'),
-      const AegisMyProfileScreen(),
-    ];
 
     // Load cached profile when scaffold opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -44,12 +39,23 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFF09090b),
       appBar: _buildAppBar(),
       drawer: _buildDrawer(),
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: const [
+          PlaceholderScreen(title: 'Feed'),
+          PlaceholderScreen(title: 'Tournaments'),
+          PlaceholderScreen(title: 'TeamUp'),
+          PlaceholderScreen(title: 'Messages'),
+          AegisMyProfileScreen(),
+        ],
+      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -400,6 +406,23 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold> {
                     height: 1,
                     indent: 16,
                     endIndent: 16,
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.speed,
+                    title: 'Performance Report',
+                    color: const Color(0xFF06b6d4),
+                    onTap: () {
+                      final perf = ref.read(performanceServiceProvider);
+                      perf.printReport();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Performance report printed to console',
+                          ),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
                   ),
                   _buildDrawerItem(
                     icon: Icons.logout,

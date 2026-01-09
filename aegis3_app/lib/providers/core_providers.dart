@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import '../constants/api_constants.dart';
+import '../services/token_manager.dart';
 
 // ============================================================================
 // Secure Storage Provider
@@ -69,8 +70,8 @@ final dioProvider = Provider<Dio>((ref) {
     InterceptorsWrapper(
       onRequest: (options, handler) async {
         try {
-          final storage = ref.read(secureStorageProvider);
-          final token = await storage.read(key: 'auth_token');
+          final tokenManager = ref.read(tokenManagerProvider);
+          final token = await tokenManager.getToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -86,9 +87,10 @@ final dioProvider = Provider<Dio>((ref) {
         // Handle 401 unauthorized globally
         if (error.response?.statusCode == 401) {
           logger.w('Unauthorized request - token may be invalid');
+          // Clear cached token on 401
+          final tokenManager = ref.read(tokenManagerProvider);
+          await tokenManager.clearToken();
           // TODO: Trigger logout flow
-          // final storage = ref.read(secureStorageProvider);
-          // await storage.delete(key: 'auth_token');
           // Navigate to login screen
         }
 

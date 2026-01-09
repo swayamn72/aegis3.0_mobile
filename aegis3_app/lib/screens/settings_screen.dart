@@ -31,33 +31,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   File? _selectedImage;
   String? _currentProfilePicture;
 
-  // Controllers for form fields
-  final _realNameController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _bioController = TextEditingController();
-  final _inGameNameController = TextEditingController();
-  final _discordTagController = TextEditingController();
-  final _twitchController = TextEditingController();
-  final _youtubeController = TextEditingController();
+  // Use a single controller map for easier management
+  final Map<String, TextEditingController> _controllers = {};
 
-  // Read-only field controllers (created once)
-  late final _countryController = TextEditingController(text: 'India');
-  late final _primaryGameController = TextEditingController(text: 'BGMI');
-
-  // Dropdown values
-  String _selectedCountry = 'India';
-  String _selectedPrimaryGame = 'BGMI';
-  String _selectedTeamStatus = '';
-  String _selectedAvailability = '';
-  String _selectedProfileVisibility = 'public';
-
-  // Note: languages and inGameRoles can be added later if needed
+  // Dropdown values consolidated into a map
+  final Map<String, String> _dropdownValues = {
+    'country': 'India',
+    'primaryGame': 'BGMI',
+    'teamStatus': '',
+    'availability': '',
+    'profileVisibility': 'public',
+  };
 
   bool _didPrefill = false;
+
   @override
   void initState() {
     super.initState();
+    _initializeControllers();
     final profile = ref.read(userProfileProvider).profile;
     if (profile != null) {
       _prefillFromProfile(profile);
@@ -67,39 +58,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _initializeControllers() {
+    final fields = [
+      'realName',
+      'age',
+      'location',
+      'bio',
+      'inGameName',
+      'discordTag',
+      'twitch',
+      'youtube',
+      'country',
+      'primaryGame',
+    ];
+
+    for (final field in fields) {
+      _controllers[field] = TextEditingController();
+    }
+  }
+
   void _prefillFromProfile(profile) {
     setState(() {
-      _realNameController.text = profile.realName ?? '';
-      _ageController.text = profile.age?.toString() ?? '';
-      _locationController.text = profile.location ?? '';
-      _bioController.text = profile.bio ?? '';
-      _selectedCountry = profile.country ?? 'India';
-      _countryController.text = _selectedCountry;
+      _controllers['realName']?.text = profile.realName ?? '';
+      _controllers['age']?.text = profile.age?.toString() ?? '';
+      _controllers['location']?.text = profile.location ?? '';
+      _controllers['bio']?.text = profile.bio ?? '';
+      _controllers['inGameName']?.text = profile.inGameName ?? '';
+      _controllers['discordTag']?.text = profile.discordTag ?? '';
+      _controllers['twitch']?.text = profile.twitch ?? '';
+      _controllers['youtube']?.text = profile.youtube ?? '';
+
+      _dropdownValues['country'] = profile.country ?? 'India';
+      _dropdownValues['primaryGame'] = profile.primaryGame ?? 'BGMI';
+      _dropdownValues['teamStatus'] = profile.teamStatus ?? '';
+      _dropdownValues['availability'] = profile.availability ?? '';
+      _dropdownValues['profileVisibility'] =
+          profile.profileVisibility ?? 'public';
+
+      _controllers['country']?.text = _dropdownValues['country']!;
+      _controllers['primaryGame']?.text = _dropdownValues['primaryGame']!;
       _currentProfilePicture = profile.profilePicture;
-      _inGameNameController.text = profile.inGameName ?? '';
-      _selectedPrimaryGame = profile.primaryGame ?? 'BGMI';
-      _primaryGameController.text = _selectedPrimaryGame;
-      _selectedTeamStatus = profile.teamStatus ?? '';
-      _selectedAvailability = profile.availability ?? '';
-      _discordTagController.text = profile.discordTag ?? '';
-      _twitchController.text = profile.twitch ?? '';
-      _youtubeController.text = profile.youtube ?? '';
-      _selectedProfileVisibility = profile.profileVisibility ?? 'public';
     });
   }
 
   @override
   void dispose() {
-    _realNameController.dispose();
-    _ageController.dispose();
-    _locationController.dispose();
-    _bioController.dispose();
-    _inGameNameController.dispose();
-    _discordTagController.dispose();
-    _twitchController.dispose();
-    _youtubeController.dispose();
-    _countryController.dispose();
-    _primaryGameController.dispose();
+    // Dispose all controllers at once
+    _controllers.values.forEach((controller) => controller.dispose());
     super.dispose();
   }
 
@@ -161,20 +166,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         profileData[key] = value;
       }
 
-      addIfPresent('realName', _realNameController.text.trim());
-      final age = int.tryParse(_ageController.text.trim());
+      addIfPresent('realName', _controllers['realName']!.text.trim());
+      final age = int.tryParse(_controllers['age']!.text.trim());
       if (age != null) profileData['age'] = age;
-      addIfPresent('location', _locationController.text.trim());
-      addIfPresent('bio', _bioController.text.trim());
-      addIfPresent('country', _selectedCountry);
-      addIfPresent('inGameName', _inGameNameController.text.trim());
-      addIfPresent('primaryGame', _selectedPrimaryGame);
-      addIfPresent('teamStatus', _selectedTeamStatus);
-      addIfPresent('availability', _selectedAvailability);
-      addIfPresent('discordTag', _discordTagController.text.trim());
-      addIfPresent('twitch', _twitchController.text.trim());
-      addIfPresent('youtube', _youtubeController.text.trim());
-      addIfPresent('profileVisibility', _selectedProfileVisibility);
+      addIfPresent('location', _controllers['location']!.text.trim());
+      addIfPresent('bio', _controllers['bio']!.text.trim());
+      addIfPresent('country', _dropdownValues['country']);
+      addIfPresent('inGameName', _controllers['inGameName']!.text.trim());
+      addIfPresent('primaryGame', _dropdownValues['primaryGame']);
+      addIfPresent('teamStatus', _dropdownValues['teamStatus']);
+      addIfPresent('availability', _dropdownValues['availability']);
+      addIfPresent('discordTag', _controllers['discordTag']!.text.trim());
+      addIfPresent('twitch', _controllers['twitch']!.text.trim());
+      addIfPresent('youtube', _controllers['youtube']!.text.trim());
+      addIfPresent('profileVisibility', _dropdownValues['profileVisibility']);
       if (_currentProfilePicture != null)
         profileData['profilePicture'] = _currentProfilePicture;
 
@@ -286,26 +291,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: 'Personal Information',
                       children: [
                         _buildTextField(
-                          controller: _realNameController,
+                          controller: _controllers['realName']!,
                           label: 'Real Name',
                           hint: 'Enter your full name',
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _ageController,
+                          controller: _controllers['age']!,
                           label: 'Age',
                           hint: 'Enter your age',
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _locationController,
+                          controller: _controllers['location']!,
                           label: 'Location',
                           hint: 'City, State',
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _countryController,
+                          controller: _controllers['country']!,
                           label: 'Country',
                           hint: 'India',
                           readOnly: true,
@@ -313,7 +318,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _bioController,
+                          controller: _controllers['bio']!,
                           label: 'Bio',
                           hint: 'Tell us about yourself',
                           maxLines: 4,
@@ -325,13 +330,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: 'Gaming Profile',
                       children: [
                         _buildTextField(
-                          controller: _inGameNameController,
+                          controller: _controllers['inGameName']!,
                           label: 'In-Game Name (IGN)',
                           hint: 'Your primary IGN',
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _primaryGameController,
+                          controller: _controllers['primaryGame']!,
                           label: 'Primary Game',
                           hint: 'BGMI',
                           readOnly: true,
@@ -344,19 +349,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: 'Socials',
                       children: [
                         _buildTextField(
-                          controller: _discordTagController,
+                          controller: _controllers['discordTag']!,
                           label: 'Discord',
                           hint: 'username#1234',
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _twitchController,
+                          controller: _controllers['twitch']!,
                           label: 'Twitch',
                           hint: 'twitch.tv/username',
                         ),
                         const SizedBox(height: 16),
                         _buildTextField(
-                          controller: _youtubeController,
+                          controller: _controllers['youtube']!,
                           label: 'YouTube',
                           hint: 'youtube.com/@username',
                         ),
@@ -368,17 +373,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       children: [
                         _buildDropdown(
                           label: 'Profile Visibility',
-                          value: _selectedProfileVisibility,
+                          value: _dropdownValues['profileVisibility']!,
                           items: const ['public', 'private'],
                           hint: 'Select Visibility',
                           onChanged: (value) {
-                            setState(() => _selectedProfileVisibility = value!);
+                            setState(
+                              () =>
+                                  _dropdownValues['profileVisibility'] = value!,
+                            );
                           },
                         ),
                         const SizedBox(height: 16),
                         _buildDropdown(
                           label: 'Team Status',
-                          value: _selectedTeamStatus,
+                          value: _dropdownValues['teamStatus']!,
                           items: const [
                             'looking for a team',
                             'in a team',
@@ -386,13 +394,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ],
                           hint: 'Select Team Status',
                           onChanged: (value) {
-                            setState(() => _selectedTeamStatus = value ?? '');
+                            setState(
+                              () => _dropdownValues['teamStatus'] = value ?? '',
+                            );
                           },
                         ),
                         const SizedBox(height: 16),
                         _buildDropdown(
                           label: 'Availability',
-                          value: _selectedAvailability,
+                          value: _dropdownValues['availability']!,
                           items: const [
                             'weekends only',
                             'evenings',
@@ -401,7 +411,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ],
                           hint: 'Select Availability',
                           onChanged: (value) {
-                            setState(() => _selectedAvailability = value ?? '');
+                            setState(
+                              () =>
+                                  _dropdownValues['availability'] = value ?? '',
+                            );
                           },
                         ),
                       ],
@@ -423,11 +436,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             backgroundImage: _selectedImage != null
                 ? FileImage(_selectedImage!)
                 : (_currentProfilePicture != null &&
-                              _currentProfilePicture!.isNotEmpty &&
-                              !_currentProfilePicture!.startsWith('data:')
-                          ? CachedNetworkImageProvider(_currentProfilePicture!)
-                          : null)
-                      as ImageProvider?,
+                      _currentProfilePicture!.isNotEmpty &&
+                      !_currentProfilePicture!.startsWith('data:'))
+                ? _getProfileImageProvider(_currentProfilePicture!)
+                : null,
             child:
                 (_selectedImage == null &&
                     (_currentProfilePicture == null ||
@@ -610,5 +622,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  /// Get the appropriate image provider based on image URL type
+  ImageProvider _getProfileImageProvider(String imageUrl) {
+    // Check if it's a local file path (cached image)
+    if (imageUrl.startsWith('/') ||
+        imageUrl.startsWith('C:') ||
+        imageUrl.contains('profile_images') ||
+        imageUrl.contains('cache')) {
+      return FileImage(File(imageUrl));
+    }
+
+    // Otherwise, it's a network URL
+    return CachedNetworkImageProvider(imageUrl);
   }
 }

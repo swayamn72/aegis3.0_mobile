@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import '../providers/core_providers.dart';
+import 'token_manager.dart';
 
 // ============================================================================
 // Auth Service Provider
@@ -10,7 +11,7 @@ import '../providers/core_providers.dart';
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(
     ref.read(dioProvider),
-    ref.read(secureStorageProvider),
+    ref.read(tokenManagerProvider),
     ref.read(loggerProvider),
   );
 });
@@ -20,15 +21,15 @@ final authServiceProvider = Provider<AuthService>((ref) {
 // ============================================================================
 class AuthService {
   final Dio _dio;
-  final FlutterSecureStorage _storage;
+  final TokenManager _tokenManager;
   final Logger logger;
 
-  AuthService(this._dio, this._storage, this.logger);
+  AuthService(this._dio, this._tokenManager, this.logger);
 
   Future<void> logout() async {
     try {
       logger.d('Logging out user...');
-      await _storage.delete(key: 'auth_token');
+      await _tokenManager.clearToken();
       logger.d('User logged out successfully');
     } catch (e) {
       logger.e('Error during logout: $e');
@@ -50,7 +51,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final token = response.data['token'];
-        await _storage.write(key: 'auth_token', value: token);
+        await _tokenManager.setToken(token);
         logger.d('Login successful');
         return null; // Success
       } else {
@@ -83,7 +84,7 @@ class AuthService {
 
       if (response.statusCode == 201) {
         final token = response.data['token'];
-        await _storage.write(key: 'auth_token', value: token);
+        await _tokenManager.setToken(token);
         logger.d('Signup successful');
         return null; // Success
       } else {
