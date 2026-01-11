@@ -8,6 +8,7 @@ import 'services/performance_service.dart';
 import 'widgets/profile_avatar.dart';
 import 'screens/myprofile_screen';
 import 'screens/settings_screen.dart';
+import 'screens/my_teams_screen.dart';
 
 // Main Navigation Scaffold
 class AegisMainScaffold extends ConsumerStatefulWidget {
@@ -330,7 +331,13 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold>
                     title: 'Team Management',
                     color: const Color(0xFF7c3aed),
                     onTap: () {
-                      // TODO: Implement team management navigation
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyTeamsScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildDrawerItem(
