@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/team_model.dart';
 import '../services/team_service.dart';
@@ -283,6 +284,7 @@ class SearchState {
 
 class SearchNotifier extends StateNotifier<SearchState> {
   final Ref _ref;
+  Timer? _debounceTimer;
 
   SearchNotifier(this._ref) : super(const SearchState());
 
@@ -294,31 +296,50 @@ class SearchNotifier extends StateNotifier<SearchState> {
     String? region,
     String searchType = 'all',
   }) async {
+    // Cancel any existing debounce timer
+    _debounceTimer?.cancel();
+
     if (query.trim().isEmpty) {
       state = const SearchState();
       return;
     }
 
+    // Minimum character requirement
+    if (query.trim().length < 2) {
+      return;
+    }
+
+    // Set loading state immediately for better UX
     state = state.copyWith(isLoading: true, clearError: true);
 
-    try {
-      final results = await _teamService.search(
-        query: query,
-        game: game,
-        region: region,
-        searchType: searchType,
-      );
-      state = state.copyWith(results: results, isLoading: false);
-    } catch (e) {
-      _ref.read(loggerProvider).e('Error searching: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
-    }
+    // Debounce: wait 400ms before making API call
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        final results = await _teamService.search(
+          query: query,
+          game: game,
+          region: region,
+          searchType: searchType,
+        );
+        state = state.copyWith(results: results, isLoading: false);
+      } catch (e) {
+        _ref.read(loggerProvider).e('Error searching: $e');
+        state = state.copyWith(
+          isLoading: false,
+          error: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    });
   }
 
   void clear() {
+    _debounceTimer?.cancel();
     state = const SearchState();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 }

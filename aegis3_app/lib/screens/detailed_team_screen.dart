@@ -955,11 +955,9 @@ class _DetailedTeamScreenState extends ConsumerState<DetailedTeamScreen>
           TextField(
             onChanged: (value) {
               setState(() => _searchQuery = value);
-              if (value.length >= 2) {
-                ref
-                    .read(searchProvider.notifier)
-                    .search(query: value, searchType: 'players');
-              }
+              ref
+                  .read(searchProvider.notifier)
+                  .search(query: value, searchType: 'players');
             },
             decoration: InputDecoration(
               hintText: 'Search players...',

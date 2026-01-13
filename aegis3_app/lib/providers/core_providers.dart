@@ -52,11 +52,11 @@ final dioProvider = Provider<Dio>((ref) {
   if (kDebugMode) {
     dio.interceptors.add(
       LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
+        requestBody: false, // Reduced: Don't log full request body
+        responseBody: false, // Reduced: Don't log full response body
+        requestHeader: false, // Reduced: Don't log request headers
         responseHeader: false,
-        error: true,
+        error: true, // Keep error logging
         logPrint: (obj) {
           final logger = ref.read(loggerProvider);
           logger.d(obj);
