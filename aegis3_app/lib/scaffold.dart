@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/login_screen.dart';
 import 'providers/user_profile_provider.dart';
-import 'providers/core_providers.dart';
 import 'services/auth_service.dart';
 import 'services/performance_service.dart';
 import 'widgets/profile_avatar.dart';
@@ -29,12 +28,13 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold>
   @override
   void initState() {
     super.initState();
-
-    // Load cached profile when scaffold opens
+    // Check if profile is loaded, if not trigger load
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final logger = ref.read(loggerProvider);
-      logger.d('Loading profile in post frame callback...');
-      ref.read(userProfileProvider.notifier).loadProfile();
+      final profileState = ref.read(userProfileProvider);
+      if (profileState.profile == null && !profileState.isLoading) {
+        // Cache is empty, load profile
+        ref.read(userProfileProvider.notifier).loadProfile();
+      }
     });
   }
 

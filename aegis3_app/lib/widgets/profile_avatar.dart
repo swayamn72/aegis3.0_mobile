@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../constants/api_constants.dart';
 
 /// Reusable profile avatar widget with caching and fallback
-class ProfileAvatar extends StatelessWidget {
+/// Optimized to cache ImageProvider and only reload when imageUrl changes
+class ProfileAvatar extends StatefulWidget {
   final String? imageUrl;
   final String? fallbackText;
   final double size;
@@ -21,129 +21,107 @@ class ProfileAvatar extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends State<ProfileAvatar> {
+  ImageProvider? _cachedImageProvider;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void didUpdateWidget(ProfileAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only reload if imageUrl actually changed
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _loadImage();
+    }
+  }
+
+  Future<void> _loadImage() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _cachedImageProvider = null;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final url = widget.imageUrl!;
+
+      // Decode base64 once and cache
+      if (url.startsWith('data:image/')) {
+        final base64Data = url.split(',').last;
+        final bytes = base64Decode(base64Data);
+        _cachedImageProvider = MemoryImage(bytes);
+      }
+      // Check file existence once and cache
+      else if (url.startsWith('/') ||
+          url.startsWith('C:') ||
+          url.contains('profile_images')) {
+        final file = File(url);
+        if (await file.exists()) {
+          _cachedImageProvider = FileImage(file);
+        } else {
+          _cachedImageProvider = null;
+        }
+      }
+      // Network URL - use CachedNetworkImageProvider
+      else {
+        final fullUrl = _getFullImageUrl(url);
+        _cachedImageProvider = CachedNetworkImageProvider(fullUrl);
+      }
+    } catch (e) {
+      debugPrint('Error loading profile image: $e');
+      _cachedImageProvider = null;
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      width: widget.size,
+      height: widget.size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white, width: borderWidth),
+        border: Border.all(color: Colors.white, width: widget.borderWidth),
         gradient: const LinearGradient(
           colors: [Color(0xFF06b6d4), Color(0xFF7c3aed)],
         ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: _buildContent(),
+        child: _isLoading
+            ? _buildLoadingPlaceholder()
+            : _cachedImageProvider != null
+            ? Image(
+                image: ResizeImage(
+                  _cachedImageProvider!,
+                  width: (widget.size * 2).toInt(),
+                  height: (widget.size * 2).toInt(),
+                ),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildFallback(),
+              )
+            : _buildFallback(),
       ),
     );
-  }
-
-  Widget _buildContent() {
-    // If we have a valid image URL, try to load it
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      // Check if it's a local file path (cached image)
-      if (imageUrl!.startsWith('/') ||
-          imageUrl!.startsWith('C:') ||
-          imageUrl!.contains('profile_images')) {
-        return _buildFileImage(imageUrl!);
-      }
-
-      // Check if it's a base64 data URI
-      if (imageUrl!.startsWith('data:image/')) {
-        return _buildBase64Image(imageUrl!);
-      }
-
-      // Otherwise treat as network URL
-      final fullImageUrl = _getFullImageUrl(imageUrl!);
-
-      if (kDebugMode) {
-        print('ProfileAvatar: Loading network image from: $fullImageUrl');
-      }
-
-      return CachedNetworkImage(
-        imageUrl: fullImageUrl,
-        fit: BoxFit.cover,
-        memCacheWidth: (size * 2).toInt(), // 2x for retina displays
-        memCacheHeight: (size * 2).toInt(),
-        maxHeightDiskCache: (size * 3).toInt(),
-        maxWidthDiskCache: (size * 3).toInt(),
-        placeholder: (context, url) => _buildLoadingPlaceholder(),
-        errorWidget: (context, url, error) {
-          if (kDebugMode) {
-            print('ProfileAvatar: Failed to load image. Error: $error');
-          }
-          return _buildFallback();
-        },
-      );
-    }
-
-    // No image URL, show fallback
-    return _buildFallback();
-  }
-
-  /// Build image from local file path
-  Widget _buildFileImage(String filePath) {
-    try {
-      if (kDebugMode) {
-        print('ProfileAvatar: Loading file image from: $filePath');
-      }
-
-      final file = File(filePath);
-      if (file.existsSync()) {
-        return Image.file(
-          file,
-          fit: BoxFit.cover,
-          cacheWidth: (size * 2).toInt(),
-          cacheHeight: (size * 2).toInt(),
-          errorBuilder: (context, error, stackTrace) {
-            if (kDebugMode) {
-              print('ProfileAvatar: Failed to load file image: $error');
-            }
-            return _buildFallback();
-          },
-        );
-      } else {
-        if (kDebugMode) {
-          print('ProfileAvatar: File does not exist: $filePath');
-        }
-        return _buildFallback();
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('ProfileAvatar: Error loading file image: $e');
-      }
-      return _buildFallback();
-    }
-  }
-
-  /// Build image from base64 data URI
-  Widget _buildBase64Image(String dataUri) {
-    try {
-      if (kDebugMode) {
-        print('ProfileAvatar: Loading base64 image');
-      }
-
-      // Extract the base64 data after the comma
-      final base64Data = dataUri.split(',').last;
-      final bytes = base64Decode(base64Data);
-
-      return Image.memory(
-        bytes,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          if (kDebugMode) {
-            print('ProfileAvatar: Failed to decode base64 image: $error');
-          }
-          return _buildFallback();
-        },
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('ProfileAvatar: Error parsing base64 image: $e');
-      }
-      return _buildFallback();
-    }
   }
 
   /// Convert relative URLs to absolute URLs
@@ -174,8 +152,8 @@ class ProfileAvatar extends StatelessWidget {
       ),
       child: Center(
         child: SizedBox(
-          width: size * 0.4,
-          height: size * 0.4,
+          width: widget.size * 0.4,
+          height: widget.size * 0.4,
           child: const CircularProgressIndicator(
             strokeWidth: 2,
             valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
@@ -193,16 +171,16 @@ class ProfileAvatar extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: fallbackText != null && fallbackText!.isNotEmpty
+        child: widget.fallbackText != null && widget.fallbackText!.isNotEmpty
             ? Text(
-                _getInitials(fallbackText!),
+                _getInitials(widget.fallbackText!),
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: size * 0.4,
+                  fontSize: widget.size * 0.4,
                   fontWeight: FontWeight.bold,
                 ),
               )
-            : Icon(Icons.person, size: size * 0.5, color: Colors.white),
+            : Icon(Icons.person, size: widget.size * 0.5, color: Colors.white),
       ),
     );
   }

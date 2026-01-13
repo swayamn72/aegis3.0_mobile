@@ -31,6 +31,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   File? _selectedImage;
   String? _currentProfilePicture;
 
+  // Cache for decoded base64 image to avoid repeated decoding
+  String? _cachedDataUri;
+  Widget? _cachedDataUriWidget;
+
   // Use a single controller map for easier management
   final Map<String, TextEditingController> _controllers = {};
 
@@ -190,8 +194,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         // Update local state with the updated profile
         _prefillFromProfile(updatedProfile);
         _didPrefill = true;
-        // Also update the provider cache in background
-        ref.read(userProfileProvider.notifier).fetchAndCacheProfile();
+        // Force refresh to show changes immediately after user update
+        ref
+            .read(userProfileProvider.notifier)
+            .fetchAndCacheProfile(force: true);
         _showSuccess('Profile updated successfully!');
         setState(() => _selectedImage = null);
       } else {
@@ -471,14 +477,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildDataUriImage(String dataUri) {
+    // Return cached widget if the dataUri hasn't changed
+    if (_cachedDataUri == dataUri && _cachedDataUriWidget != null) {
+      return _cachedDataUriWidget!;
+    }
+
     try {
       final base64String = dataUri.split(',')[1];
       final bytes = base64Decode(base64String);
-      return ClipOval(
+      final widget = ClipOval(
         child: Image.memory(bytes, width: 120, height: 120, fit: BoxFit.cover),
       );
+
+      // Cache the result
+      _cachedDataUri = dataUri;
+      _cachedDataUriWidget = widget;
+
+      return widget;
     } catch (e) {
-      return const Icon(Icons.person, size: 60, color: _iconColor);
+      final fallback = const Icon(Icons.person, size: 60, color: _iconColor);
+      _cachedDataUri = dataUri;
+      _cachedDataUriWidget = fallback;
+      return fallback;
     }
   }
 

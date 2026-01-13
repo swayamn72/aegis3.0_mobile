@@ -44,6 +44,9 @@ class UserProfileNotifier extends StateNotifier<ProfileState> {
   final Ref _ref;
   static const String _profileKey = 'profile';
   Box? _box;
+  bool _isFetching = false;
+  DateTime? _lastFetch;
+  static const _fetchCooldown = Duration(minutes: 5);
 
   UserProfileNotifier(this._ref) : super(const ProfileState()) {
     _initializeBox();
@@ -53,6 +56,7 @@ class UserProfileNotifier extends StateNotifier<ProfileState> {
     try {
       // Use the cached box from hive_setup
       _box = await openProfileBox();
+      // Auto-load cached profile (fast operation)
       await loadProfile();
     } catch (e) {
       final logger = _ref.read(loggerProvider);
@@ -92,13 +96,33 @@ class UserProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
-  /// Fetch profile from API and cache it
-  Future<void> fetchAndCacheProfile() async {
+  /// Fetch profile from API and cache it (with cooldown protection)
+  Future<void> fetchAndCacheProfile({bool force = false}) async {
     if (_box == null) {
       await _initializeBox();
       if (_box == null) return;
     }
 
+    // Prevent rapid successive fetches
+    if (_isFetching) {
+      final logger = _ref.read(loggerProvider);
+      logger.d('Profile fetch already in progress, skipping');
+      return;
+    }
+
+    // Cooldown check (don't fetch if recently fetched)
+    if (!force && _lastFetch != null) {
+      final timeSinceLastFetch = DateTime.now().difference(_lastFetch!);
+      if (timeSinceLastFetch < _fetchCooldown) {
+        final logger = _ref.read(loggerProvider);
+        logger.d(
+          'Profile fetch on cooldown (${timeSinceLastFetch.inSeconds}s ago), skipping',
+        );
+        return;
+      }
+    }
+
+    _isFetching = true;
     state = state.copyWith(isLoading: true, clearError: true);
 
     final perf = _ref.read(performanceServiceProvider);
@@ -179,6 +203,8 @@ class UserProfileNotifier extends StateNotifier<ProfileState> {
         await _box!.put(_profileKey, jsonData);
         perf.stopTrace('cacheProfileToHive');
         logger.d('Profile cached successfully');
+
+        _lastFetch = DateTime.now();
         perf.stopTrace('fetchAndCacheProfile');
       } else {
         perf.stopTrace('fetchAndCacheProfile');
@@ -196,6 +222,8 @@ class UserProfileNotifier extends StateNotifier<ProfileState> {
 
       // Clear corrupted cache
       await _box?.delete(_profileKey);
+    } finally {
+      _isFetching = false;
     }
   }
 
@@ -203,6 +231,7 @@ class UserProfileNotifier extends StateNotifier<ProfileState> {
   Future<void> clearProfile() async {
     state = const ProfileState();
     await _box?.delete(_profileKey);
+    _lastFetch = null; // Reset cooldown timestamp
     final logger = _ref.read(loggerProvider);
     logger.d('Profile cleared');
   }

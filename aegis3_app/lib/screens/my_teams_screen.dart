@@ -113,7 +113,7 @@ class _MyTeamsScreenState extends ConsumerState<MyTeamsScreen> {
         ),
       );
 
-      // Refresh user profile
+      // Refresh user profile (cooldown mechanism will prevent spam)
       await ref.read(userProfileProvider.notifier).fetchAndCacheProfile();
 
       setState(() {
@@ -147,6 +147,7 @@ class _MyTeamsScreenState extends ConsumerState<MyTeamsScreen> {
         ),
       );
 
+      // Refresh profile (cooldown mechanism prevents spam)
       await ref.read(userProfileProvider.notifier).fetchAndCacheProfile();
       await _handleRefreshInvitations();
     }
