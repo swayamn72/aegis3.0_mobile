@@ -8,6 +8,7 @@ import 'widgets/profile_avatar.dart';
 import 'screens/myprofile_screen';
 import 'screens/settings_screen.dart';
 import 'screens/my_teams_screen.dart';
+import 'screens/chat_screen.dart';
 
 // Main Navigation Scaffold
 class AegisMainScaffold extends ConsumerStatefulWidget {
@@ -53,7 +54,7 @@ class _AegisMainScaffoldState extends ConsumerState<AegisMainScaffold>
           PlaceholderScreen(title: 'Feed'),
           PlaceholderScreen(title: 'Tournaments'),
           PlaceholderScreen(title: 'TeamUp'),
-          PlaceholderScreen(title: 'Messages'),
+          ChatScreen(),
           AegisMyProfileScreen(),
         ],
       ),
