@@ -652,6 +652,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message, bool isMine) {
+    // Handle recruitment approach messages
+    if (message.messageType == 'system' &&
+        message.metadata?['type'] == 'recruitment_approach') {
+      return _buildRecruitmentMessage(message, isMine);
+    }
+
+    // Handle team invitation messages
+    if (message.messageType == 'invitation') {
+      return _buildInvitationMessage(message, isMine);
+    }
+
+    // Regular text messages
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -683,6 +695,460 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecruitmentMessage(ChatMessage message, bool isMine) {
+    final metadata = message.metadata;
+    final teamName = metadata?['teamName'] as String? ?? 'Team';
+    final teamLogo = metadata?['teamLogo'] as String?;
+    final approachMessage = metadata?['message'] as String? ?? message.message;
+    final approachStatus = metadata?['approachStatus'] as String?;
+    final approachId = metadata?['approachId'] as String?;
+
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF581c87), Color(0xFF4c1d95)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: const Color(0xFF7c3aed).withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Team header
+              Row(
+                children: [
+                  // Team logo/avatar
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF9333ea).withOpacity(0.5),
+                        width: 2,
+                      ),
+                      color: const Color(0xFF7c3aed),
+                    ),
+                    child: teamLogo != null && teamLogo.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              teamLogo,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
+                                    child: Text(
+                                      teamName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              teamName[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Team name and title
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          teamName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Recruitment Approach',
+                          style: TextStyle(
+                            color: Color(0xFFc4b5fd),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Message
+              Text(
+                approachMessage,
+                style: const TextStyle(color: Color(0xFFddd6fe), fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              // Action buttons or status
+              if (approachStatus == null || approachStatus == 'pending')
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: approachId != null
+                            ? () => _handleAcceptApproach(approachId)
+                            : null,
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Accept & Start Chat'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF22c55e),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: approachId != null
+                            ? () => _handleRejectApproach(approachId)
+                            : null,
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text('Decline'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFef4444),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else if (approachStatus == 'accepted')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF22c55e).withOpacity(0.2),
+                    border: Border.all(
+                      color: const Color(0xFF22c55e).withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Color(0xFF86efac),
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Approach Accepted - Tryout Chat Created',
+                        style: TextStyle(
+                          color: Color(0xFF86efac),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (approachStatus == 'rejected' ||
+                  approachStatus == 'declined')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFef4444).withOpacity(0.2),
+                    border: Border.all(
+                      color: const Color(0xFFef4444).withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.cancel, color: Color(0xFFfca5a5), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Approach Declined',
+                        style: TextStyle(
+                          color: Color(0xFFfca5a5),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // Handle any other status (expired, canceled, etc.)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF71717a).withOpacity(0.2),
+                    border: Border.all(
+                      color: const Color(0xFF71717a).withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: Color(0xFFa1a1aa),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Status: ${approachStatus ?? "unknown"}',
+                        style: const TextStyle(
+                          color: Color(0xFFa1a1aa),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInvitationMessage(ChatMessage message, bool isMine) {
+    final invitationData = message.invitationData;
+    if (invitationData == null) {
+      return _buildMessageBubble(message, isMine);
+    }
+
+    final team = invitationData.team;
+    final status = message.invitationStatus ?? invitationData.status;
+    final invitationId = message.invitationId;
+
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1e3a8a), Color(0xFF1e40af)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: const Color(0xFF3b82f6).withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Team header
+              Row(
+                children: [
+                  // Team logo/avatar
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF60a5fa).withOpacity(0.5),
+                        width: 2,
+                      ),
+                      color: const Color(0xFF3b82f6),
+                    ),
+                    child: team.logo != null && team.logo!.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              team.logo!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
+                                    child: Text(
+                                      team.teamName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              team.teamName[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Team name and title
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          team.teamName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Team Invitation',
+                          style: TextStyle(
+                            color: Color(0xFFbfdbfe),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Message
+              Text(
+                message.message,
+                style: const TextStyle(color: Color(0xFFdbeafe), fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              // Action buttons or status
+              if (status != 'accepted' && status != 'declined')
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: invitationId != null
+                            ? () => _handleAcceptInvitation(invitationId)
+                            : null,
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Accept Invitation'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF22c55e),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: invitationId != null
+                            ? () => _handleDeclineInvitation(invitationId)
+                            : null,
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text('Decline'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFef4444),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else if (status == 'accepted')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF22c55e).withOpacity(0.2),
+                    border: Border.all(
+                      color: const Color(0xFF22c55e).withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Color(0xFF86efac),
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Invitation Accepted',
+                        style: TextStyle(
+                          color: Color(0xFF86efac),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (status == 'declined')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFef4444).withOpacity(0.2),
+                    border: Border.all(
+                      color: const Color(0xFFef4444).withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.cancel, color: Color(0xFFfca5a5), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Invitation Declined',
+                        style: TextStyle(
+                          color: Color(0xFFfca5a5),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -831,6 +1297,268 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     _messageController.clear();
     _scrollToBottom();
+  }
+
+  Future<void> _handleAcceptApproach(String approachId) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF18181b),
+        title: const Text(
+          'Accept Recruitment Approach',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'This will create a tryout chat with the team. Are you ready to proceed?',
+          style: TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF22c55e),
+            ),
+            child: const Text('Accept'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final tryoutChat = await ref
+          .read(chatProvider.notifier)
+          .acceptApproach(approachId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Approach accepted! Tryout chat created.'),
+            backgroundColor: Color(0xFF22c55e),
+          ),
+        );
+        // Navigate to the tryout chat
+        setState(() {
+          _selectedChatId = tryoutChat.id;
+          _selectedUserId = null;
+          _chatType = 'tryout';
+        });
+        ref.read(chatProvider.notifier).joinTryoutChat(tryoutChat.id);
+      }
+    } catch (e) {
+      if (mounted) {
+        // Parse error message to show user-friendly text
+        String errorMessage = 'Failed to accept approach';
+        if (e.toString().contains('already')) {
+          errorMessage = 'This approach has already been processed';
+        } else if (e.toString().contains('expired')) {
+          errorMessage = 'This approach has expired';
+        } else {
+          errorMessage =
+              'Failed to accept approach: ${e.toString().replaceAll('Exception:', '').trim()}';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: const Color(0xFFef4444),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        // Refresh messages to show updated status
+        if (_selectedUserId != null) {
+          ref.read(chatProvider.notifier).fetchMessages(_selectedUserId!);
+        }
+      }
+    }
+  }
+
+  Future<void> _handleRejectApproach(String approachId) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF18181b),
+        title: const Text(
+          'Decline Recruitment Approach',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to decline this recruitment approach?',
+              style: TextStyle(color: Color(0xFFd4d4d8)),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Reason (optional)',
+                hintStyle: TextStyle(color: Color(0xFF71717a)),
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFef4444),
+            ),
+            child: const Text('Decline'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        await ref
+            .read(chatProvider.notifier)
+            .rejectApproach(
+              approachId,
+              controller.text.trim().isEmpty
+                  ? 'No reason provided'
+                  : controller.text.trim(),
+            );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Approach declined'),
+              backgroundColor: Color(0xFF71717a),
+            ),
+          );
+          // Refresh messages to update UI
+          if (_selectedUserId != null) {
+            ref.read(chatProvider.notifier).fetchMessages(_selectedUserId!);
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          // Parse error message to show user-friendly text
+          String errorMessage = 'Failed to decline approach';
+          if (e.toString().contains('already')) {
+            errorMessage = 'This approach has already been processed';
+          } else if (e.toString().contains('expired')) {
+            errorMessage = 'This approach has expired';
+          } else {
+            errorMessage =
+                'Failed to decline approach: ${e.toString().replaceAll('Exception:', '').trim()}';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: const Color(0xFFef4444),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          // Refresh messages to show updated status
+          if (_selectedUserId != null) {
+            ref.read(chatProvider.notifier).fetchMessages(_selectedUserId!);
+          }
+        }
+      }
+    }
+    controller.dispose();
+  }
+
+  Future<void> _handleAcceptInvitation(String invitationId) async {
+    try {
+      await ref.read(chatProvider.notifier).acceptInvitation(invitationId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invitation accepted! You joined the team.'),
+            backgroundColor: Color(0xFF22c55e),
+          ),
+        );
+        // Refresh messages
+        if (_selectedUserId != null) {
+          ref.read(chatProvider.notifier).fetchMessages(_selectedUserId!);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to accept invitation: $e'),
+            backgroundColor: const Color(0xFFef4444),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeclineInvitation(String invitationId) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF18181b),
+        title: const Text(
+          'Decline Team Invitation',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to decline this team invitation?',
+          style: TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFef4444),
+            ),
+            child: const Text('Decline'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        await ref.read(chatProvider.notifier).declineInvitation(invitationId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invitation declined'),
+              backgroundColor: Color(0xFF71717a),
+            ),
+          );
+          // Refresh messages
+          if (_selectedUserId != null) {
+            ref.read(chatProvider.notifier).fetchMessages(_selectedUserId!);
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to decline invitation: $e'),
+              backgroundColor: const Color(0xFFef4444),
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _showSendOfferDialog(String chatId) {
