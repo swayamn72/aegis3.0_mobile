@@ -1,8 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
+
 import '../providers/core_providers.dart';
-import 'token_manager.dart';
+import '../services/token_manager.dart';
+
+import 'notification_service.dart';
 
 // ============================================================================
 // Auth Service Provider
@@ -12,6 +15,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
     ref.read(dioProvider),
     ref.read(tokenManagerProvider),
     ref.read(loggerProvider),
+    ref.read(notificationServiceProvider),
   );
 });
 
@@ -22,8 +26,14 @@ class AuthService {
   final Dio _dio;
   final TokenManager _tokenManager;
   final Logger logger;
+  final NotificationService _notificationService;
 
-  AuthService(this._dio, this._tokenManager, this.logger);
+  AuthService(
+    this._dio,
+    this._tokenManager,
+    this.logger,
+    this._notificationService,
+  );
 
   Future<void> logout() async {
     try {
@@ -50,8 +60,21 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final token = response.data['token'];
+        final userId =
+            response.data['userId'] ??
+            response.data['user']?['_id'] ??
+            response.data['player']?['_id'] ??
+            response.data['player']?['id'];
         await _tokenManager.setToken(token);
         logger.d('Login successful');
+        // Update FCM token after login
+        if (userId != null) {
+          await _notificationService.updateFcmToken(userId: userId);
+        } else {
+          logger.w(
+            'User ID not found in login response, cannot update FCM token',
+          );
+        }
         return null; // Success
       } else {
         final errorMsg = response.data['message'] ?? 'Login failed';
@@ -83,8 +106,21 @@ class AuthService {
 
       if (response.statusCode == 201) {
         final token = response.data['token'];
+        final userId =
+            response.data['userId'] ??
+            response.data['user']?['_id'] ??
+            response.data['player']?['_id'] ??
+            response.data['player']?['id'];
         await _tokenManager.setToken(token);
         logger.d('Signup successful');
+        // Update FCM token after signup
+        if (userId != null) {
+          await _notificationService.updateFcmToken(userId: userId);
+        } else {
+          logger.w(
+            'User ID not found in signup response, cannot update FCM token',
+          );
+        }
         return null; // Success
       } else {
         final errorMsg = response.data['message'] ?? 'Signup failed';

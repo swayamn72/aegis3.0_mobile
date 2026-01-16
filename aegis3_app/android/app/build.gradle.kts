@@ -13,7 +13,17 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
+dependencies {
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    // Add Firebase Messaging SDK
+    implementation("com.google.firebase:firebase-messaging")
+    // Core library desugaring for Java 8+ APIs
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    // You can add other Firebase SDKs here as needed
+}
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
@@ -39,6 +49,19 @@ android {
     }
 }
 
+
 flutter {
     source = "../.."
 }
+
+
+dependencies {
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    // Add Firebase Messaging SDK
+    implementation("com.google.firebase:firebase-messaging")
+    // You can add other Firebase SDKs here as needed
+}
+
+// Apply Google Services plugin for Firebase
+apply(plugin = "com.google.gms.google-services")
